@@ -25,7 +25,9 @@ export default class TicketService {
    */
   #requestPrice(ticketTypeRequest) {
     const prices = {
-      "ADULT": 10,
+      'ADULT': 20,
+      'CHILD': 10,
+      'INFANT': 0,
     }
     const type = ticketTypeRequest.getTicketType()
     return prices[type] * ticketTypeRequest.getNoOfTickets()
@@ -37,7 +39,9 @@ export default class TicketService {
    */
   #requestSeats(ticketTypeRequest) {
     const seats = {
-      "ADULT": 1,
+      'ADULT': 1,
+      'CHILD': 1,
+      'INFANT': 0,
     }
     const type = ticketTypeRequest.getTicketType()
     return seats[type] * ticketTypeRequest.getNoOfTickets()
@@ -70,14 +74,29 @@ export default class TicketService {
     var totalPrice = 0
     var totalSeats = 0
     var totalTickets = 0
+    var totalInfants = 0
+    var totalAdults = 0
     ticketTypeRequests.forEach((item) => {
       totalPrice += this.#requestPrice(item)
       totalSeats += this.#requestSeats(item)
       totalTickets += item.getNoOfTickets()
+      totalInfants += item.getTicketType() === 'INFANT' ? item.getNoOfTickets() : 0
+      totalAdults += item.getTicketType() === 'ADULT' ? item.getNoOfTickets() : 0
     })
 
+    if (totalInfants > totalAdults) {
+      const msg = 'Only one infant is allowed per adult.'
+      throw new InvalidPurchaseException(msg)
+    }
+
     if (totalTickets > 20) {
-      throw new InvalidPurchaseException("No more than 20 can be ordered at a time.")
+      const msg = 'No more than 20 tickets can be ordered at a time.'
+      throw new InvalidPurchaseException(msg)
+    }
+
+    if (totalAdults <= 0) {
+      const msg = 'There must be at least 1 adult per booking.'
+      throw new InvalidPurchaseException(msg)
     }
 
     // make the payment and reserve the seats

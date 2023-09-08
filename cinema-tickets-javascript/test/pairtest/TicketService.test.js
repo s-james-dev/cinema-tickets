@@ -22,119 +22,212 @@ test('rejects calls with missing account ID', () => {
     )
     expect(() => ticketService.purchaseTickets())
         .toThrow(InvalidPurchaseException)
+
+    _assertNoTicketServicesUsed()
 })
 
-test('rejects calls with negative account ID', () => {
+test('it rejects calls with negative account ID', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
     expect(() => ticketService.purchaseTickets(-1))
         .toThrow(InvalidPurchaseException);
+
+    _assertNoTicketServicesUsed()
 })
 
-test('rejects non-numeric account ID', () => {
+test('it rejects non-numeric account ID', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
     expect(() => ticketService.purchaseTickets('hello'))
         .toThrow(InvalidPurchaseException)
+
+    _assertNoTicketServicesUsed()
 })
 
-test('nothing happens if no tickets are being ordered', () => {
+test('it won\'t allow bookings with no tickets', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
-    ticketService.purchaseTickets(12345)
+    expect(() => ticketService.purchaseTickets(12345))
+        .toThrow(InvalidPurchaseException)
 
-    assertNoTicketServicesUsed()
+    _assertNoTicketServicesUsed()
 })
 
-test('allows 1 adult ticket to be bought and seat reserved', () => {
+test('it allows 1 adult ticket to be bought and seat reserved', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
     ticketService.purchaseTickets(12345, new TicketTypeRequest('ADULT', 1))
 
-    const mockSeatReservationInstance = SeatReservationService.mock.instances[0]
-    const mockSeatReservation = mockSeatReservationInstance.reserveSeat
-    const mockPaymentInstance = TicketPaymentService.mock.instances[0]
-    const mockPayment = mockPaymentInstance.makePayment
-
+    const mockSeatReservation = _getFirstSeatReservation()
     expect (mockSeatReservation).toHaveBeenCalledTimes(1)
     expect (mockSeatReservation).toHaveBeenCalledWith(12345, 1)
 
+    const mockPayment = _getFirstPayment()
     expect (mockPayment).toHaveBeenCalledTimes(1)
-    expect (mockPayment).toHaveBeenCalledWith(12345, 10)
+    expect (mockPayment).toHaveBeenCalledWith(12345, 20)
 })
 
-test('allows several adult tickets to be bought and seat reserved', () => {
+test('it allows several adult tickets to be bought and seat reserved', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
     ticketService.purchaseTickets(12345, new TicketTypeRequest('ADULT', 3))
 
-    const mockSeatReservationInstance = SeatReservationService.mock.instances[0]
-    const mockSeatReservation = mockSeatReservationInstance.reserveSeat
-    const mockPaymentInstance = TicketPaymentService.mock.instances[0]
-    const mockPayment = mockPaymentInstance.makePayment
-
+    const mockSeatReservation = _getFirstSeatReservation()
     expect (mockSeatReservation).toHaveBeenCalledTimes(1)
     expect (mockSeatReservation).toHaveBeenCalledWith(12345, 3)
 
+    const mockPayment = _getFirstPayment()
     expect (mockPayment).toHaveBeenCalledTimes(1)
-    expect (mockPayment).toHaveBeenCalledWith(12345, 30)
+    expect (mockPayment).toHaveBeenCalledWith(12345, 60)
 })
 
-test('does not allow negative ticket counts', () => {
+test('it does not allow negative ticket counts', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
-    expect(() => ticketService.purchaseTickets(12345,
+    expect(() => ticketService.purchaseTickets(
+                12345,
                 new TicketTypeRequest('ADULT', 3),
                 new TicketTypeRequest('ADULT', -1),
             )
         )
     .toThrow(InvalidPurchaseException)
 
-    assertNoTicketServicesUsed()
+    _assertNoTicketServicesUsed()
 })
 
-test('does not allow more than 20 tickets to be ordered in one request', () => {
+test('it does not allow more than 20 tickets to be ordered in one request', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
-    expect(() => ticketService.purchaseTickets(12345,
+    expect(() => ticketService.purchaseTickets(
+                12345,
                 new TicketTypeRequest('ADULT', 21),
             )
         )
     .toThrow(InvalidPurchaseException)
 
-    assertNoTicketServicesUsed()
+    _assertNoTicketServicesUsed()
 })
 
-test('does not allow more than 20 tickets to be ordered', () => {
+test('it does not allow more than 20 tickets to be ordered', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
         new TicketPaymentService()
     )
-    expect(() => ticketService.purchaseTickets(12345,
+    expect(() => ticketService.purchaseTickets(
+                12345,
                 new TicketTypeRequest('ADULT', 10),
                 new TicketTypeRequest('ADULT', 11),
             )
         )
     .toThrow(InvalidPurchaseException)
 
-    assertNoTicketServicesUsed()
+    _assertNoTicketServicesUsed()
 })
 
-function assertNoTicketServicesUsed() {
+test('it charges the correct amount for child seats', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    ticketService.purchaseTickets(
+        12345,
+        new TicketTypeRequest('ADULT', 2),
+        new TicketTypeRequest('CHILD', 3),
+    )
+
+    const mockSeatReservation = _getFirstSeatReservation()
+    expect (mockSeatReservation).toHaveBeenCalledTimes(1)
+    expect (mockSeatReservation).toHaveBeenCalledWith(12345, 5)
+
+    const mockPayment = _getFirstPayment()
+    expect (mockPayment).toHaveBeenCalledTimes(1)
+    expect (mockPayment).toHaveBeenCalledWith(12345, 70)
+})
+
+test('it does not charge for an infant ticket or reserve a seat', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    ticketService.purchaseTickets(
+        12345,
+        new TicketTypeRequest('ADULT', 1),
+        new TicketTypeRequest('INFANT', 1),
+    )
+
+    const mockSeatReservation = _getFirstSeatReservation()
+    expect (mockSeatReservation).toHaveBeenCalledTimes(1)
+    expect (mockSeatReservation).toHaveBeenCalledWith(12345, 1)
+
+    const mockPayment = _getFirstPayment()
+    expect (mockPayment).toHaveBeenCalledTimes(1)
+    expect (mockPayment).toHaveBeenCalledWith(12345, 20)
+})
+
+test('it only allows one infant per adult', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets(
+            12345,
+            new TicketTypeRequest('ADULT', 1),
+            new TicketTypeRequest('INFANT', 2),
+        )
+    )
+    .toThrow(InvalidPurchaseException)
+
+    _assertNoTicketServicesUsed()
+})
+
+test('it won\'t allow a child without at least 1 adult', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets(
+            12345,
+            new TicketTypeRequest('CHILD', 1),
+        )
+    )
+    .toThrow(InvalidPurchaseException)
+
+    _assertNoTicketServicesUsed()
+})
+
+test('it won\'t allow an infant without at least 1 adult', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets(
+            12345,
+            new TicketTypeRequest('INFANT', 1),
+        )
+    )
+    .toThrow(InvalidPurchaseException)
+
+    _assertNoTicketServicesUsed()
+})
+
+/**
+ * A helper to check that the mock payment / reservation services were not used
+ */
+function _assertNoTicketServicesUsed() {
     const mockSeatReservationInstance = SeatReservationService.mock.instances[0]
     const mockSeatReservation = mockSeatReservationInstance.reserveSeat
     const mockPaymentInstance = TicketPaymentService.mock.instances[0]
@@ -144,6 +237,25 @@ function assertNoTicketServicesUsed() {
     expect (mockPayment).not.toHaveBeenCalled()
 }
 
+/**
+ * A helper to get the first seat reservation made with the mock service
+ * @returns mockSeatReservation
+ */
+function _getFirstSeatReservation() {
+    const mockSeatReservationInstance = SeatReservationService.mock.instances[0]
+    const mockSeatReservation = mockSeatReservationInstance.reserveSeat
+    return mockSeatReservation
+}
+
+/**
+ * A helper to get the first seat payment made with the mock service
+ * @returns mockSeatReservation
+ */
+function _getFirstPayment() {
+    const mockPaymentInstance = TicketPaymentService.mock.instances[0]
+    const mockPayment = mockPaymentInstance.makePayment
+    return mockPayment
+}
+
 // TODO: configurable ticket prices
-// TODO: child / infant tickets without adult
-// TODO: infants not allocated a seat
+// TODO: pluggable constraint lib?
