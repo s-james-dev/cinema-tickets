@@ -257,5 +257,4 @@ function _getFirstPayment() {
     return mockPayment
 }
 
-// TODO: configurable ticket prices
 // TODO: pluggable constraint lib?

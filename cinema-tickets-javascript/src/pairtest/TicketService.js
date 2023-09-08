@@ -6,15 +6,40 @@ import SeatReservationService from '../thirdparty/seatbooking/SeatReservationSer
 export default class TicketService {
   #seatReservationService
   #ticketPaymentService
+  #adultTicketPrice
+  #childTicketPrice
+  #infantTicketPrice
 
   /**
    * 
    * @param {SeatReservationService} seatReservationService 
    * @param {TicketPaymentService} ticketPaymentService
+   * @param {int} adultTicketPrice
+   * @param {int} childTicketPrice
+   * @param {int} infantTicketPrice
    */
-  constructor(seatReservationService, ticketPaymentService) {
+  constructor(
+      seatReservationService,
+      ticketPaymentService,
+      adultTicketPrice = 20,
+      childTicketPrice = 10,
+      infantTicketPrice = 0,
+  ) {
+    if (!Number.isInteger(adultTicketPrice) || adultTicketPrice < 0) {
+      throw new TypeError('adultTicketPrice must be a non-negative integer');
+    }
+    if (!Number.isInteger(childTicketPrice) || childTicketPrice < 0) {
+      throw new TypeError('childTicketPrice must be a non-negative integer');
+    }
+    if (!Number.isInteger(infantTicketPrice) || infantTicketPrice < 0) {
+      throw new TypeError('infantTicketPrice must be a non-negative integer');
+    }
+
     this.#seatReservationService = seatReservationService
     this.#ticketPaymentService = ticketPaymentService
+    this.#adultTicketPrice = adultTicketPrice
+    this.#childTicketPrice = childTicketPrice
+    this.#infantTicketPrice = infantTicketPrice
   }
 
   /**
@@ -25,9 +50,9 @@ export default class TicketService {
    */
   #requestPrice(ticketTypeRequest) {
     const prices = {
-      'ADULT': 20,
-      'CHILD': 10,
-      'INFANT': 0,
+      'ADULT': this.#adultTicketPrice,
+      'CHILD': this.#childTicketPrice,
+      'INFANT': this.#infantTicketPrice,
     }
     const type = ticketTypeRequest.getTicketType()
     return prices[type] * ticketTypeRequest.getNoOfTickets()
