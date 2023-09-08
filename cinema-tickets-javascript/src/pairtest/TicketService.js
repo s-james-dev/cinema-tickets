@@ -43,7 +43,7 @@ export default class TicketService {
   }
 
   /**
-   * Work out 
+   * Work out the price of a particular ticket request
    * 
    * @param TicketTypeRequest ticketTypeRequest 
    * @return Number
@@ -59,6 +59,8 @@ export default class TicketService {
   }
 
   /**
+   * Work out the total number of seats in a ticket request
+   * 
    * @param TicketTypeRequest ticketTypeRequest 
    * @return Number
    */
@@ -72,17 +74,30 @@ export default class TicketService {
     return seats[type] * ticketTypeRequest.getNoOfTickets()
   }
 
-    /**
-     * @param TicketTypeRequest ticketTypeRequest 
-     * @param String ticketType
-     * @return Number
-     */
-    #requestPeopleCount(ticketTypeRequest, ticketType) {
-      if (ticketTypeRequest.getTicketType() !== ticketType) {
-        return 0
-      }
-      return ticketTypeRequest.getNoOfTickets()
+  /**
+   * Work out the number of people of a given type in a ticket request
+   * 
+   * @param TicketTypeRequest ticketTypeRequest 
+   * @param String ticketType
+   * @return Number
+   */
+  #requestPeopleCount(ticketTypeRequest, ticketType) {
+    if (ticketTypeRequest.getTicketType() !== ticketType) {
+      return 0
     }
+    return ticketTypeRequest.getNoOfTickets()
+  }
+
+  /**
+   * A helper to make it tidier to 
+   * 
+   * @throws InvalidPurchaseException
+   */
+  #assert(condition, message) {
+    if (!condition) {
+      throw new InvalidPurchaseException(message)
+    }
+  }
 
   /**
    * Should only have private methods other than the one below.
@@ -95,24 +110,23 @@ export default class TicketService {
    */
   purchaseTickets(accountId, ...ticketTypeRequests) {
     // TicketPaymentService.makePayment requires int account IDs. adhere to that.
-    if (!Number.isInteger(accountId) || accountId < 0) {
-      throw new InvalidPurchaseException("Missing account ID.")
-    }
+    this.#assert(
+      Number.isInteger(accountId) && accountId >= 0,
+      'Missing account ID.'
+    )
 
     // Require all ticket counts to be positive ints
     ticketTypeRequests.forEach((item) => {
       const noOfTickets = item.getNoOfTickets()
-      if (!Number.isInteger(noOfTickets) || noOfTickets <= 0) {
-        throw new InvalidPurchaseException("Ticket counts must be positive ints.")
-      }
+      this.#assert(
+        Number.isInteger(noOfTickets) && noOfTickets > 0,
+        'Ticket counts must be positive ints.'
+      )
     })
 
     // work out how many seats are needed and what to charge
-    var totalPrice = 0
-    var totalSeats = 0
-    var totalTickets = 0
-    var totalInfants = 0
-    var totalAdults = 0
+    var totalPrice, totalSeats, totalTickets, totalInfants, totalAdults
+    totalPrice = totalSeats = totalTickets = totalInfants = totalAdults = 0
     ticketTypeRequests.forEach((item) => {
       totalPrice += this.#requestPrice(item)
       totalSeats += this.#requestSeats(item)
@@ -121,20 +135,10 @@ export default class TicketService {
       totalAdults += this.#requestPeopleCount(item, 'ADULT')
     })
 
-    if (totalInfants > totalAdults) {
-      const msg = 'Only one infant is allowed per adult.'
-      throw new InvalidPurchaseException(msg)
-    }
-
-    if (totalTickets > 20) {
-      const msg = 'No more than 20 tickets can be ordered at a time.'
-      throw new InvalidPurchaseException(msg)
-    }
-
-    if (totalAdults <= 0) {
-      const msg = 'There must be at least 1 adult per booking.'
-      throw new InvalidPurchaseException(msg)
-    }
+    // enforce business logic constraints
+    this.#assert(totalInfants <= totalAdults, 'Only one infant allowed per adult.')
+    this.#assert(totalTickets <= 20, 'No more than 20 tickets at a time.')
+    this.#assert(totalAdults > 0, 'There must be at least 1 adult.')
 
     // make the payment and reserve the seats
     if (totalSeats > 0) {
