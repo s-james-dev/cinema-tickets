@@ -33,6 +33,15 @@ test('rejects calls with negative account ID', () => {
         .toThrow(InvalidPurchaseException);
 })
 
+test('rejects non-numeric account ID', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets('hello'))
+        .toThrow(InvalidPurchaseException)
+})
+
 test('nothing happens if no tickets are being ordered', () => {
     var ticketService = new TicketService(
         new SeatReservationService(),
@@ -40,13 +49,7 @@ test('nothing happens if no tickets are being ordered', () => {
     )
     ticketService.purchaseTickets(12345)
 
-    const mockSeatReservationInstance = SeatReservationService.mock.instances[0]
-    const mockSeatReservation = mockSeatReservationInstance.reserveSeat
-    const mockPaymentInstance = TicketPaymentService.mock.instances[0]
-    const mockPayment = mockPaymentInstance.makePayment
-
-    expect (mockSeatReservation).not.toHaveBeenCalled()
-    expect (mockPayment).not.toHaveBeenCalled
+    assertNoTicketServicesUsed()
 })
 
 test('allows 1 adult ticket to be bought and seat reserved', () => {
@@ -87,9 +90,60 @@ test('allows several adult tickets to be bought and seat reserved', () => {
     expect (mockPayment).toHaveBeenCalledWith(12345, 30)
 })
 
-// TODO: negative ticket counts
-// TODO: non-numeric account numbers?
+test('does not allow negative ticket counts', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets(12345,
+                new TicketTypeRequest('ADULT', 3),
+                new TicketTypeRequest('ADULT', -1),
+            )
+        )
+    .toThrow(InvalidPurchaseException)
+
+    assertNoTicketServicesUsed()
+})
+
+test('does not allow more than 20 tickets to be ordered in one request', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets(12345,
+                new TicketTypeRequest('ADULT', 21),
+            )
+        )
+    .toThrow(InvalidPurchaseException)
+
+    assertNoTicketServicesUsed()
+})
+
+test('does not allow more than 20 tickets to be ordered', () => {
+    var ticketService = new TicketService(
+        new SeatReservationService(),
+        new TicketPaymentService()
+    )
+    expect(() => ticketService.purchaseTickets(12345,
+                new TicketTypeRequest('ADULT', 10),
+                new TicketTypeRequest('ADULT', 11),
+            )
+        )
+    .toThrow(InvalidPurchaseException)
+
+    assertNoTicketServicesUsed()
+})
+
+function assertNoTicketServicesUsed() {
+    const mockSeatReservationInstance = SeatReservationService.mock.instances[0]
+    const mockSeatReservation = mockSeatReservationInstance.reserveSeat
+    const mockPaymentInstance = TicketPaymentService.mock.instances[0]
+    const mockPayment = mockPaymentInstance.makePayment
+
+    expect (mockSeatReservation).not.toHaveBeenCalled()
+    expect (mockPayment).not.toHaveBeenCalled()
+}
+
 // TODO: configurable ticket prices
-// TODO: multiple types ordered
-// TODO: ordering more than 20 tickets in one request
-// TODO: ordering more than 20 tickets in several requests
+// TODO: child / infant tickets without adult
+// TODO: infants not allocated a seat

@@ -53,17 +53,32 @@ export default class TicketService {
    * @throws InvalidPurchaseException
    */
   purchaseTickets(accountId, ...ticketTypeRequests) {
-    if (!accountId || accountId < 0) {
+    // TicketPaymentService.makePayment requires int account IDs. adhere to that.
+    if (!Number.isInteger(accountId) || accountId < 0) {
       throw new InvalidPurchaseException("Missing account ID.")
     }
+
+    // Require all ticket counts to be positive ints
+    ticketTypeRequests.forEach((item) => {
+      const noOfTickets = item.getNoOfTickets()
+      if (!Number.isInteger(noOfTickets) || noOfTickets <= 0) {
+        throw new InvalidPurchaseException("Ticket counts must be positive ints.")
+      }
+    })
 
     // work out how many seats are needed and what to charge
     var totalPrice = 0
     var totalSeats = 0
+    var totalTickets = 0
     ticketTypeRequests.forEach((item) => {
       totalPrice += this.#requestPrice(item)
       totalSeats += this.#requestSeats(item)
+      totalTickets += item.getNoOfTickets()
     })
+
+    if (totalTickets > 20) {
+      throw new InvalidPurchaseException("No more than 20 can be ordered at a time.")
+    }
 
     // make the payment and reserve the seats
     if (totalSeats > 0) {
