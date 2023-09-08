@@ -47,6 +47,18 @@ export default class TicketService {
     return seats[type] * ticketTypeRequest.getNoOfTickets()
   }
 
+    /**
+     * @param TicketTypeRequest ticketTypeRequest 
+     * @param String ticketType
+     * @return Number
+     */
+    #requestPeopleCount(ticketTypeRequest, ticketType) {
+      if (ticketTypeRequest.getTicketType() !== ticketType) {
+        return 0
+      }
+      return ticketTypeRequest.getNoOfTickets()
+    }
+
   /**
    * Should only have private methods other than the one below.
    */
@@ -80,8 +92,8 @@ export default class TicketService {
       totalPrice += this.#requestPrice(item)
       totalSeats += this.#requestSeats(item)
       totalTickets += item.getNoOfTickets()
-      totalInfants += item.getTicketType() === 'INFANT' ? item.getNoOfTickets() : 0
-      totalAdults += item.getTicketType() === 'ADULT' ? item.getNoOfTickets() : 0
+      totalInfants += this.#requestPeopleCount(item, 'INFANT')
+      totalAdults += this.#requestPeopleCount(item, 'ADULT')
     })
 
     if (totalInfants > totalAdults) {
