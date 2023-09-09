@@ -97,15 +97,6 @@ export default class TicketService {
       'Missing account ID.'
     );
 
-    // Require all ticket counts to be positive ints
-    ticketTypeRequests.forEach((item) => {
-      const noOfTickets = item.getNoOfTickets();
-      this.#assert(
-        Number.isInteger(noOfTickets) && noOfTickets > 0,
-        'Ticket counts must be positive ints.'
-      );
-    });
-
     // work out how many seats are needed and what to charge
     let totalPrice, totalSeats, totalTickets, totalInfants, totalAdults;
     totalPrice = totalSeats = totalTickets = totalInfants = totalAdults = 0;
@@ -122,6 +113,13 @@ export default class TicketService {
     this.#assert(totalTickets <= maxTickets, `No more than ${maxTickets} tickets at a time.`);
     this.#assert(totalInfants <= totalAdults, 'Only one infant allowed per adult.');
     this.#assert(totalAdults > 0, 'There must be at least 1 adult.');
+    ticketTypeRequests.forEach((item) => {
+      const noOfTickets = item.getNoOfTickets();
+      this.#assert(
+        Number.isInteger(noOfTickets) && noOfTickets > 0,
+        'Ticket counts must be positive ints.'
+      );
+    });
 
     // make the payment and reserve the seats
     if (totalSeats > 0) {
