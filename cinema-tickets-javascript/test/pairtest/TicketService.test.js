@@ -106,20 +106,6 @@ test('it does not allow negative ticket counts', () => {
   _assertNoTicketServicesUsed();
 });
 
-test('it does not allow more than 20 tickets to be ordered in one request', () => {
-  const ticketService = new TicketService(
-    new SeatReservationService(),
-    new TicketPaymentService()
-  );
-  expect(() => ticketService.purchaseTickets(
-    12345,
-    new TicketTypeRequest('ADULT', 21)
-  ))
-    .toThrow(InvalidPurchaseException);
-
-  _assertNoTicketServicesUsed();
-});
-
 test('it does not allow more than 20 tickets to be ordered', () => {
   const ticketService = new TicketService(
     new SeatReservationService(),
@@ -250,5 +236,3 @@ function _getFirstPayment () {
   const mockPayment = mockPaymentInstance.makePayment;
   return mockPayment;
 }
-
-// TODO: pluggable constraint lib?

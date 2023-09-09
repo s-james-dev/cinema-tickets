@@ -2,50 +2,26 @@ import TicketTypeRequest from './lib/TicketTypeRequest.js';
 import InvalidPurchaseException from './lib/InvalidPurchaseException.js';
 import TicketPaymentService from '../thirdparty/paymentgateway/TicketPaymentService.js';
 import SeatReservationService from '../thirdparty/seatbooking/SeatReservationService.js';
+import TicketServiceConfig from './lib/TicketServiceConfig.js';
 
 export default class TicketService {
   #seatReservationService;
   #ticketPaymentService;
-  #adultTicketPrice;
-  #childTicketPrice;
-  #infantTicketPrice;
-  #maxTicketsPerOrder;
+  #config;
 
   /**
    * @param {SeatReservationService} seatReservationService
    * @param {TicketPaymentService} ticketPaymentService
-   * @param {int} adultTicketPrice
-   * @param {int} childTicketPrice
-   * @param {int} infantTicketPrice
-   * @param {int} maxTicketsPerOrder
+   * @param {TicketServiceConfig} TicketServiceConfig
    */
   constructor (
     seatReservationService,
     ticketPaymentService,
-    adultTicketPrice = 20,
-    childTicketPrice = 10,
-    infantTicketPrice = 0,
-    maxTicketsPerOrder = 20
+    ticketServiceConfig = new TicketServiceConfig()
   ) {
-    const config = {
-      adultTicketPrice,
-      childTicketPrice,
-      infantTicketPrice,
-      maxTicketsPerOrder
-    };
-    Object.keys(config).forEach(key => {
-      const value = config[key];
-      if (!Number.isInteger(value) || value < 0) {
-        throw new TypeError(`${key} must be a non-negative integer`);
-      }
-    });
-
     this.#seatReservationService = seatReservationService;
     this.#ticketPaymentService = ticketPaymentService;
-    this.#adultTicketPrice = adultTicketPrice;
-    this.#childTicketPrice = childTicketPrice;
-    this.#infantTicketPrice = infantTicketPrice;
-    this.#maxTicketsPerOrder = maxTicketsPerOrder;
+    this.#config = ticketServiceConfig;
   }
 
   /**
@@ -56,9 +32,9 @@ export default class TicketService {
    */
   #requestPrice (ticketTypeRequest) {
     const prices = {
-      ADULT: this.#adultTicketPrice,
-      CHILD: this.#childTicketPrice,
-      INFANT: this.#infantTicketPrice
+      ADULT: this.#config.getAdultTicketPrice(),
+      CHILD: this.#config.getChildTicketPrice(),
+      INFANT: this.#config.getInfantTicketPrice()
     };
     const type = ticketTypeRequest.getTicketType();
     return prices[type] * ticketTypeRequest.getNoOfTickets();
@@ -142,8 +118,9 @@ export default class TicketService {
     });
 
     // enforce business logic constraints
+    const maxTickets = this.#config.getMaxTicketsPerOrder();
+    this.#assert(totalTickets <= maxTickets, `No more than ${maxTickets} tickets at a time.`);
     this.#assert(totalInfants <= totalAdults, 'Only one infant allowed per adult.');
-    this.#assert(totalTickets <= this.#maxTicketsPerOrder, `No more than ${this.#maxTicketsPerOrder} tickets at a time.`);
     this.#assert(totalAdults > 0, 'There must be at least 1 adult.');
 
     // make the payment and reserve the seats
