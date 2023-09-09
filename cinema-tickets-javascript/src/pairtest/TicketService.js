@@ -9,6 +9,7 @@ export default class TicketService {
   #adultTicketPrice;
   #childTicketPrice;
   #infantTicketPrice;
+  #maxTicketsPerOrder;
 
   /**
    * @param {SeatReservationService} seatReservationService
@@ -16,29 +17,35 @@ export default class TicketService {
    * @param {int} adultTicketPrice
    * @param {int} childTicketPrice
    * @param {int} infantTicketPrice
+   * @param {int} maxTicketsPerOrder
    */
   constructor (
     seatReservationService,
     ticketPaymentService,
     adultTicketPrice = 20,
     childTicketPrice = 10,
-    infantTicketPrice = 0
+    infantTicketPrice = 0,
+    maxTicketsPerOrder = 20
   ) {
-    if (!Number.isInteger(adultTicketPrice) || adultTicketPrice < 0) {
-      throw new TypeError('adultTicketPrice must be a non-negative integer');
-    }
-    if (!Number.isInteger(childTicketPrice) || childTicketPrice < 0) {
-      throw new TypeError('childTicketPrice must be a non-negative integer');
-    }
-    if (!Number.isInteger(infantTicketPrice) || infantTicketPrice < 0) {
-      throw new TypeError('infantTicketPrice must be a non-negative integer');
-    }
+    const config = {
+      adultTicketPrice,
+      childTicketPrice,
+      infantTicketPrice,
+      maxTicketsPerOrder
+    };
+    Object.keys(config).forEach(key => {
+      const value = config[key];
+      if (!Number.isInteger(value) || value < 0) {
+        throw new TypeError(`${key} must be a non-negative integer`);
+      }
+    });
 
     this.#seatReservationService = seatReservationService;
     this.#ticketPaymentService = ticketPaymentService;
     this.#adultTicketPrice = adultTicketPrice;
     this.#childTicketPrice = childTicketPrice;
     this.#infantTicketPrice = infantTicketPrice;
+    this.#maxTicketsPerOrder = maxTicketsPerOrder;
   }
 
   /**
@@ -136,7 +143,7 @@ export default class TicketService {
 
     // enforce business logic constraints
     this.#assert(totalInfants <= totalAdults, 'Only one infant allowed per adult.');
-    this.#assert(totalTickets <= 20, 'No more than 20 tickets at a time.');
+    this.#assert(totalTickets <= this.#maxTicketsPerOrder, `No more than ${this.#maxTicketsPerOrder} tickets at a time.`);
     this.#assert(totalAdults > 0, 'There must be at least 1 adult.');
 
     // make the payment and reserve the seats
